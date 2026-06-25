@@ -315,11 +315,14 @@ function ClaudeEnableButton({
 export function UsageAlertBar() {
   const { prefs, refreshPrefs } = useSettings();
   const { usage, refreshing, refresh } = useOAuthUsage();
-  const { stats: codexStats } = useTokenStats("codex");
+  const { stats: codexStats, refetch: refetchCodexStats } = useTokenStats("codex");
   const t = useI18n();
   const [enabling, setEnabling] = useState(false);
   const [cooldown, setCooldown] = useState(0);
+  const [codexRefreshing, setCodexRefreshing] = useState(false);
+  const [codexCooldown, setCodexCooldown] = useState(0);
   const cooldownTimerRef = useRef<number | null>(null);
+  const codexCooldownTimerRef = useRef<number | null>(null);
   const showClaude = prefs.include_claude;
   const showCodex = prefs.include_codex;
 
@@ -337,6 +340,9 @@ export function UsageAlertBar() {
     return () => {
       if (cooldownTimerRef.current !== null) {
         window.clearInterval(cooldownTimerRef.current);
+      }
+      if (codexCooldownTimerRef.current !== null) {
+        window.clearInterval(codexCooldownTimerRef.current);
       }
     };
   }, []);
@@ -360,6 +366,33 @@ export function UsageAlertBar() {
       });
     }, 1000);
     await refresh();
+  };
+
+  const handleCodexRefresh = async () => {
+    if (codexRefreshing || codexCooldown > 0) return;
+    setCodexRefreshing(true);
+    setCodexCooldown(REFRESH_COOLDOWN_SECONDS);
+    if (codexCooldownTimerRef.current !== null) {
+      window.clearInterval(codexCooldownTimerRef.current);
+    }
+    codexCooldownTimerRef.current = window.setInterval(() => {
+      setCodexCooldown((prev) => {
+        if (prev <= 1) {
+          if (codexCooldownTimerRef.current !== null) {
+            window.clearInterval(codexCooldownTimerRef.current);
+            codexCooldownTimerRef.current = null;
+          }
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    try {
+      await refetchCodexStats();
+    } finally {
+      setCodexRefreshing(false);
+    }
   };
 
   const claudeQuotaItems = useMemo<QuotaWindow[]>(() => {
@@ -476,6 +509,13 @@ export function UsageAlertBar() {
             title={t("usageAlert.codex")}
             windows={codexQuotaItems}
             color={CODEX_COLOR}
+            action={(
+              <RefreshButton
+                refreshing={codexRefreshing}
+                cooldown={codexCooldown}
+                onClick={handleCodexRefresh}
+              />
+            )}
             empty={<span>{t("usageAlert.noQuotaData")}</span>}
           />
         )}
