@@ -1,0 +1,39 @@
+[package]
+name = "nano-token-monitor"
+version = "0.19.20"
+description = "Nano Token Monitor - macOS menu bar app"
+authors = ["seungheondoh"]
+edition = "2021"
+
+[lib]
+name = "ai_token_monitor_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["macos-private-api", "tray-icon"] }
+tauri-plugin-opener = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+glob = "0.3"
+chrono = { version = "0.4", features = ["serde"] }
+dirs = "6"
+notify = "7"
+tauri-plugin-clipboard-manager = "2.3.2"
+tauri-plugin-single-instance = "2.4.0"
+tauri-plugin-dialog = "2.6.0"
+tauri-plugin-updater = "2"
+tauri-plugin-process = "2"
+tauri-plugin-notification = "2"
+tauri-plugin-autostart = "2"
+reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
+whoami = "1"
+
+[lints.rust]
+unexpected_cfgs = { level = "allow", check-cfg = ['cfg(feature, values("cargo-clippy"))'] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+cocoa = "0.26"
+objc = "0.2"
